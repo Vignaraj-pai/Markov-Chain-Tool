@@ -3,7 +3,9 @@ import 'dart:math';
 import 'dart:ui';
 import 'dart:core';
 
+import 'package:arrow_path/arrow_path.dart';
 import 'package:bfs_visualiser/Graph_Node_widget.dart';
+import 'package:bfs_visualiser/constants.dart';
 import 'package:bfs_visualiser/graph_node_class.dart';
 import 'package:flutter/material.dart';
 
@@ -20,94 +22,44 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   int totalNodes = 50;
-  List<GraphNodeClass> graph = [];
-  List<Point> coordinates = [];
-  Map<int, List<GraphNodeClass>> adjList = {};
-  int currentNode = 0;
-  GraphNodeClass? lastDoubleTapGraph;
-  bool startVisualisation = false;
+  List<GraphNodeClass> graph = []; //stores all nodes
+  List<Point> coordinates = []; //stores coordinates of all nodes
+  Map<int, List<GraphNodeClass>> adjList = {}; //stores adjacency list
+  int currentNode = 0; //node to be added next
+  GraphNodeClass? lastDoubleTapNode; //stores the last node double tapped
   TextEditingController? startNodeTextController;
   final formKey = GlobalKey<FormState>();
   ValueNotifier<String> disconnectedGraphNotifier = ValueNotifier("");
+  List<List<int>>? transitionMatrix;
+  bool nodePresent = false;
   late Widget _animatedWidget_1;
   late Widget _animatedWidget_2;
   late Widget _currentAnimatedWidget;
+  Offset? _tapPosition;
 
   initCoordinates() {
-    coordinates.clear();
-    int count = 0;
-    while (count != totalNodes) {
-      int x = Random().nextInt(window.physicalSize.width ~/ 2.2);
-      int y = Random().nextInt(window.physicalSize.height ~/ 2.5);
-      if (!coordinates.contains(Point(x, y))) {
-        // print("$x $y");
-        coordinates.add(Point(x, y));
-        count++;
-      }
-    }
-    _animatedWidget_2 = SizedBox(
-      height: 150,
-      width: 220,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Form(
-            key: formKey,
-            autovalidateMode: AutovalidateMode.always,
-            child: TextFormField(
-              decoration: InputDecoration(
-                  hintText: "Starting node",
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              controller: startNodeTextController,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "Enter a value";
-                }
-                if (!RegExp(r'^-*[0-9]+$').hasMatch(value)) {
-                  return "Please enter a number";
-                }
-                if (int.parse(value) < 0) {
-                  return "Enter a positive number";
-                }
-                if (currentNode == 0 && int.parse(value) >= 0) {
-                  return "Add some Nodes to the canvas";
-                }
-                if (int.parse(value) >= currentNode) {
-                  return "Enter a value between 0 and ${currentNode - 1}";
-                }
-                return null;
-              },
-            ),
-          ),
-          const SizedBox(
-            height: 10,
-          ),
-          FloatingActionButton.extended(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  startVisualisation = true;
-                  await bfs(int.parse(startNodeTextController!.text));
-                  disconnectedGraphNotifier.value = "Completed BFS!!";
-                  setState(() {
-                    _currentAnimatedWidget = _animatedWidget_1;
-                    startVisualisation = false;
-                    startNodeTextController?.clear();
-                  });
-                }
-              },
-              label: const Text(
-                "Start",
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-              ))
-        ],
-      ),
-    );
+    // coordinates.clear();
+    // int count = 0;
+    // while (count != totalNodes) {
+    //   int x = Random().nextInt(window.physicalSize.width ~/ 2.2);
+    //   int y = Random().nextInt(window.physicalSize.height ~/ 2.5);
+    //   if (!coordinates.contains(Point(x, y))) {
+    //     // print("$x $y");
+    //     coordinates.add(Point(x, y));
+    //     count++;
+    //   }
+    // }
+    // _animatedWidget_2 = SizedBox(
+    //     height: 150,
+    //     width: 220,
+    //     child: GridView.count(
+    //       crossAxisCount: graph.length,
+    //       children: List.generate(graph, (index) => null),
+    //     ));
 
     _animatedWidget_1 = SizedBox(
       child: FloatingActionButton.extended(
-        label: const Text("Start Visualisation"),
+        label: const Text("Enter Transition Matrix"),
         hoverColor: Colors.green,
         onPressed: () {
           setState(() {
@@ -131,23 +83,23 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
+
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: max(width, height) > 1000 && min(width, height) > 500
           ? Scaffold(
               floatingActionButton: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  !startVisualisation
-                      ? Padding(
-                          padding: const EdgeInsets.only(left: 40.0),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(
-                              milliseconds: 300,
-                            ),
-                            child: _currentAnimatedWidget,
-                          ),
-                        )
-                      : Container(),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 40.0),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(
+                        milliseconds: 300,
+                      ),
+                      child: _currentAnimatedWidget,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20.0, vertical: 10.0),
@@ -160,19 +112,20 @@ class _MyAppState extends State<MyApp> {
                         })),
                   ),
                   const Spacer(),
-                  !startVisualisation
+                  nodePresent
                       ? Padding(
-                          padding: const EdgeInsets.only(right: 50.0),
+                          padding: const EdgeInsets.only(right: 25.0),
                           child: FloatingActionButton.extended(
+                            backgroundColor: Colors.redAccent[200],
                             onPressed: () {
-                              lastDoubleTapGraph = null;
-                              startVisualisation = false;
-                              initCoordinates();
+                              nodePresent = false;
+                              lastDoubleTapNode = null;
                               currentNode = 0;
                               disconnectedGraphNotifier.value = "";
                               setState(() {
                                 graph = [];
                                 adjList = {};
+                                coordinates = [];
                                 _currentAnimatedWidget = _animatedWidget_1;
                               });
                             },
@@ -180,30 +133,40 @@ class _MyAppState extends State<MyApp> {
                           ),
                         )
                       : Container(),
-                  !startVisualisation
-                      ? FloatingActionButton(
-                          child: const Icon(Icons.add),
-                          onPressed: () {
-                            startNodeTextController?.clear();
-                            if (currentNode >= totalNodes) {
-                              disconnectedGraphNotifier.value =
-                                  "Only a maximum of $totalNodes node(s) can be spawned!!";
-                              return;
-                            }
-                            setState(() {
-                              _currentAnimatedWidget = _animatedWidget_1;
-                              graph.add(GraphNodeClass(
-                                  value: currentNode,
-                                  isVisited: false,
-                                  isExplored: false));
-                              currentNode++;
-                            });
-                          },
+                  nodePresent
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 30.0),
+                          child: FloatingActionButton.extended(
+                            onPressed: () {
+                              lastDoubleTapNode = null;
+                              var deleteNode = graph.last;
+                              setState(() {
+                                graph.removeLast();
+                                coordinates.removeLast();
+                                adjList.remove(deleteNode.value);
+                                for (var element in adjList.values) {
+                                  element.remove(deleteNode);
+                                }
+                                if (graph.isEmpty) {
+                                  nodePresent = false;
+                                }
+                                currentNode--;
+                                print(graph.length);
+                              });
+                            },
+                            label: const Text("Undo"),
+                          ),
                         )
-                      : SizedBox(
-                          height: 0,
-                          width: 0,
-                          child: FloatingActionButton(onPressed: () {})),
+                      : Container()
+                  // !startVisualisation
+                  //     ? FloatingActionButton(
+                  //         child: const Icon(Icons.add),
+                  //         onPressed: () {},
+                  //       )
+                  //     : SizedBox(
+                  //         height: 0,
+                  //         width: 0,
+                  //         child: FloatingActionButton(onPressed: () {})),
                 ],
               ),
               // appBar: AppBar(
@@ -216,85 +179,120 @@ class _MyAppState extends State<MyApp> {
                     child: CustomPaint(
                       painter: LinePainter(
                           adjList: adjList, coordinates: coordinates),
-                      child: Stack(children: [
-                        startVisualisation
-                            ? Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8.0),
-                                          child: GraphNode(
-                                              graph: GraphNodeClass(
-                                                  isVisited: true,
-                                                  isExplored: false)),
-                                        ),
-                                        const Text("-> Visited"),
-                                        const SizedBox(
-                                          width: 10,
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8.0),
-                                          child: GraphNode(
-                                              graph: GraphNodeClass(
-                                                  isVisited: false,
-                                                  isExplored: true)),
-                                        ),
-                                        const Text("-> Explored"),
-                                      ],
-                                    )),
-                              )
-                            : Container(),
-                        ...graph
-                            .map((e) => Positioned(
-                                  top: coordinates[e.value!].y.toDouble(),
-                                  left: coordinates[e.value!].x.toDouble(),
-                                  child: GestureDetector(
-                                      onTap: () {
-                                        if (!startVisualisation) {
-                                          if (lastDoubleTapGraph == null) {
-                                            lastDoubleTapGraph = e;
-                                            // print("tapped");
+                      child: InkWell(
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        focusColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
+                        splashFactory: NoSplash.splashFactory,
+                        onTapDown: (details) {
+                          _tapPosition = Offset(details.globalPosition.dx - 20,
+                              details.globalPosition.dy - 20);
+                        },
+                        onTap: () {
+                          startNodeTextController?.clear();
+                          lastDoubleTapNode = null;
+                          if (currentNode >= totalNodes) {
+                            disconnectedGraphNotifier.value =
+                                "Only a maximum of $totalNodes node(s) can be spawned!!";
+                            return;
+                          }
+                          coordinates.add(Point(
+                              _tapPosition?.dx ?? 0, _tapPosition?.dy ?? 0));
+                          setState(() {
+                            _currentAnimatedWidget = _animatedWidget_1;
+                            graph.add(GraphNodeClass(
+                                value: currentNode,
+                                isVisited: false,
+                                isExplored: false));
+                            currentNode++;
+                            nodePresent = true;
+                          });
+                        },
+                        child: Stack(children: [
+                          // startVisualisation
+                          // ? Padding(
+                          //     padding: const EdgeInsets.all(12.0),
+                          //     child: Align(
+                          //         alignment: Alignment.bottomRight,
+                          //         child: Row(
+                          //           mainAxisAlignment:
+                          //               MainAxisAlignment.end,
+                          //           children: [
+                          //             // Padding(
+                          //             //   padding: const EdgeInsets.symmetric(
+                          //             //       horizontal: 8.0),
+                          //             //   child: GraphNode(
+                          //             //       graph: GraphNodeClass(
+                          //             //           isVisited: true,
+                          //             //           isExplored: false)),
+                          //             // ),
+                          //             // const Text("-> Visited"),
+                          //             // const SizedBox(
+                          //             //   width: 10,
+                          //             // ),
+                          //             // Padding(
+                          //             //   padding: const EdgeInsets.symmetric(
+                          //             //       horizontal: 8.0),
+                          //             //   child: GraphNode(
+                          //             //       graph: GraphNodeClass(
+                          //             //           isVisited: false,
+                          //             //           isExplored: true)),
+                          //             // ),
+                          //             // const Text("-> Explored"),
+                          //           ],
+                          //         )),
+                          //   )
+                          // : Container(),
+                          ...graph
+                              .map((e) => Positioned(
+                                    top: coordinates[e.value!].y.toDouble(),
+                                    left: coordinates[e.value!].x.toDouble(),
+                                    child: GestureDetector(
+                                        onTap: () {
+                                          if (lastDoubleTapNode == null) {
+                                            setState(() {
+                                              lastDoubleTapNode = e;
+                                            });
                                           } else {
                                             if (e.value !=
-                                                lastDoubleTapGraph!.value) {
+                                                lastDoubleTapNode!.value) {
                                               setState(() {
                                                 if (adjList.containsKey(
-                                                    lastDoubleTapGraph!
-                                                        .value)) {
-                                                  adjList[lastDoubleTapGraph!
+                                                    lastDoubleTapNode!.value)) {
+                                                  adjList[lastDoubleTapNode!
                                                           .value]!
                                                       .add(e);
                                                 } else {
-                                                  adjList[lastDoubleTapGraph!
+                                                  adjList[lastDoubleTapNode!
                                                       .value!] = [e];
                                                 }
                                                 if (adjList
                                                     .containsKey(e.value)) {
                                                   {
                                                     adjList[e.value]!.add(
-                                                        lastDoubleTapGraph!);
+                                                        lastDoubleTapNode!);
                                                   }
                                                 } else {
                                                   adjList[e.value!] = [
-                                                    lastDoubleTapGraph!
+                                                    lastDoubleTapNode!
                                                   ];
                                                 }
-                                                lastDoubleTapGraph = null;
+                                                lastDoubleTapNode = null;
                                               });
                                             }
                                           }
-                                        }
-                                      },
-                                      child: GraphNode(graph: e)),
-                                ))
-                            .toList()
-                      ]),
+                                        },
+                                        child: GraphNode(
+                                            graph: e,
+                                            isSelected: e.value ==
+                                                    lastDoubleTapNode?.value
+                                                ? true
+                                                : false)),
+                                  ))
+                              .toList()
+                        ]),
+                      ),
                     ));
               }))
           : Container(
@@ -368,7 +366,7 @@ class LinePainter extends CustomPainter {
       ..color = Colors.black
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
-
+    print(adjList);
     adjList.forEach((e_1, e_2) {
       for (var element in e_2) {
         canvas.drawLine(
@@ -377,6 +375,48 @@ class LinePainter extends CustomPainter {
             Offset(coordinates[element.value!].x.toDouble() + 20,
                 coordinates[element.value!].y.toDouble() + 20),
             paint);
+        // // canvas.drawLine(Offset(coordinates[element.value!].x.toDouble() + 20, coordinates[element.value!].y.toDouble() + 20),
+        // // Offset(coordinates[element.value!].x.toDouble() + 20, coordinates[element.value!].y.toDouble() + 20),paint);
+        // Path path = Path();
+        // // path.moveTo(coordinates[element.value!].x.toDouble() + 20,
+        // //     coordinates[element.value!].y.toDouble() + 20);
+        // path.moveTo(100, 100);
+        // path = ArrowPath.addTip(path);
+        // // path.moveTo(size.width * 0.25, 120);
+        // // path.relativeCubicTo(0, 0, size.width * 0.25, 50, size.width * 0.5, 0);
+        // // path = ArrowPath.addTip(path);
+
+        // canvas.drawPath(path, paint..color = Colors.blue);
+
+        // Path path = Path();
+        // path.moveTo(100, 60);
+        // path.relativeCubicTo(0, 0, size.width * 0.25, 50, size.width * 0.5, 0);
+        // path = ArrowPath.addTip(path, tipAngle: 2, tipLength: 10);
+
+        // canvas.drawPath(path, paint..color = Colors.blue);
+        // Path path = Path();
+        // path.relativeLineTo(100, 100);
+        // path = ArrowPath.addTip(path);
+        // canvas.drawPath(path, paint..color = Colors.blue);
+
+        //   Path path = Path();
+        //   path.moveTo(size.width * 0.25, 60);
+        //   path.
+        //   path = ArrowPath.addTip(path);
+
+        //   canvas.drawPath(path, paint..color = Colors.blue);
+
+        //   const TextSpan textSpan = TextSpan(
+        //     text: 'Single arrow',
+        //     style: TextStyle(color: Colors.blue),
+        //   );
+        //   final TextPainter textPainter = TextPainter(
+        //     text: textSpan,
+        //     textAlign: TextAlign.center,
+        //     textDirection: TextDirection.ltr,
+        //   );
+        //   textPainter.layout(minWidth: size.width);
+        //   textPainter.paint(canvas, const Offset(0, 36));
       }
     });
 
