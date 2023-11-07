@@ -221,27 +221,33 @@ void AbsorbingMarkov::display_all()
 	for(int i = 0; i < n_nodes; i++)
 	{
 		for(int j = 0; j < n_nodes; j++)
-			std::cout << transition_matrix[i * n_nodes + j] << " ";
+			std::cout << std::scientific << transition_matrix[i * n_nodes + j] << "\t";
 		std::cout << std::endl;
 	}
+	
+	std::cout << "\n\n\n";
 
 	// Display the P matrix
 	std::cout << "P Matrix:" << std::endl;
 	for(int i = 0; i < p_nodes; i++)
 	{
 		for(int j = 0; j < p_nodes; j++)
-			std::cout << matrix_P[i * p_nodes + j] << " ";
+			std::cout << std::scientific << matrix_P[i * p_nodes + j] << "\t";
 		std::cout << std::endl;
 	}
+	
+	std::cout << "\n\n\n";
 
 	// Display the Q matrix
 	std::cout << "Q Matrix:" << std::endl;
 	for(int i = 0; i < p_nodes; i++)
 	{
 		for(int j = 0; j < q_nodes; j++)
-			std::cout << matrix_Q[i * q_nodes + j] << " ";
+			std::cout << std::scientific << matrix_Q[i * q_nodes + j] << "\t";
 		std::cout << std::endl;
 	}
+	
+	std::cout << "\n\n\n";
 }
 
 // Raise the matrix to a power TODO: Optimize this
@@ -357,21 +363,23 @@ float* AbsorbingMarkov::calculate_state(float* initial_state, int time_steps)
 int main()
 {
 	// Initialize the transition matrix
-	float transition_matrix[9] = {1, 0, 0, 0.25, 0, 0.75, 0.5, 0.5, 0};
-	float initial_state[3] = {0, 1, 0};
+	// float transition_matrix[9] = {1, 0, 0, 0.25, 0, 0.75, 0.5, 0.5, 0};
+	float transition_matrix[49] = {0.9994208, 9.2e-6, 0, 5.6772e-4, 0, 2.28e-6, 0,0,0.967,0.033,0,0,0,0,0.133,0,0.867,0,0,0,0,0,0,0,0.967,0.033,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0.967,0.033,0.133,0,0,0,0,0,0.867};
+	float initial_state[7] = {0.5, 0.5, 0, 0, 0, 0, 0};
 
 	// Initialize the Markov Chain
-	AbsorbingMarkov markov_chain(3);
+	AbsorbingMarkov markov_chain(7);
 	markov_chain.set_transition_matrix(transition_matrix);
 	markov_chain.display_all();
 
-	float* final_state = markov_chain.calculate_state(initial_state, 10);
-	std::cout << "Initial State:" << std::endl;
-	for(int i = 0; i < 3; i++)
-		std::cout << initial_state[i] << " ";
-	std::cout << std::endl << "Final State:" << std::endl;
-	for(int i = 0; i < 3; i++)
-		std::cout << final_state[i] << " ";
+	float* final_state = markov_chain.calculate_state(initial_state, 100);
+	std::cout << "\n\nInitial:";
+	for(int i = 0; i < 7; i++)
+		std::cout << std::scientific << initial_state[i] << "\t";
+	std::cout << "\n\n\nFinal: ";
+	for(int i = 0; i < 7; i++)
+		std::cout << std::scientific << final_state[i] << "\t";
+	std::cout << "\n\n\n";
 
 	delete[] final_state;
 	return 0;
