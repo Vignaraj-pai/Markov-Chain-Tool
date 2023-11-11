@@ -90,12 +90,14 @@ class AbsorbingMarkov extends Markov {
   AbsorbingMarkov(int nNodes) : super(nNodes);
 
   bool isAbsorbingState(int i) {
-    double sum = 0.0;
-    for (int j = 0; j < nNodes; j++) {
-      sum += transitionMatrix[i * nNodes + j];
-    }
-    return sum == 1.0 && transitionMatrix[i * nNodes + i] == 1.0;
+  double sum = 0.0;
+  for (int j = 0; j < nNodes; j++) {
+    sum += transitionMatrix[i * nNodes + j];
   }
+  // Allow for a small tolerance (e.g., 1e-10) to account for precision issues
+  return (sum - 1.0).abs() < 1e-10 && transitionMatrix[i * nNodes + i] == 1.0;
+}
+
 
   void convertToCanonicalForm() {
     // Initialize the absorbing matrix
@@ -199,9 +201,9 @@ class AbsorbingMarkov extends Markov {
     // Raise the matrix to the power
     for (int i = 0; i < power - 1; i++) {
       if (i % 2 == 0) {
-        matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy2, pNodes, pNodes);
+        matrixPCopy1 = matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy2, pNodes, pNodes);
       } else {
-        matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy1, pNodes, pNodes);
+        matrixPCopy2 = matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy1, pNodes, pNodes);
       }
     }
 

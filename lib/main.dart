@@ -180,11 +180,12 @@ class _MyAppState extends State<MyApp> {
                                               for (int i = 0;
                                                   i < pow(graph.length, 2);
                                                   i++) {
-                                                sum += oneDTransitionMatrix[i];
+                                                sum += double.parse((oneDTransitionMatrix[i]).toStringAsFixed(3));
                                                 if ((i + 1) % graph.length ==
                                                     0) {
-                                                  oneDTransitionMatrix[index] =
-                                                      1 - sum;
+                                                      if (oneDTransitionMatrix[index] == 0) {
+                                                          oneDTransitionMatrix[index] = double.parse((1 - sum).toStringAsFixed(3));
+                                                      }
                                                   sum = 0;
                                                   index = index +
                                                       graph.length.toInt() +
