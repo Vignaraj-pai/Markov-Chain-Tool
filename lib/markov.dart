@@ -37,35 +37,71 @@ class Markov {
     return true;
   }
 
-  List<double> matrixMultiply(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
+  // List<double> matrixMultiply(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
+  //   if (columns1 != rows2) return [];
+  //   List<double> resultMatrix = List.filled(rows1 * columns2, 0.0);
+
+  //   for (int i = 0; i < rows1; i++) {
+  //     for (int j = 0; j < columns2; j++) {
+  //       double sum = 0.0;
+  //       for (int k = 0; k < columns1; k++) {
+  //         sum += matrix1[i * columns1 + k] * matrix2[k * columns2 + j];
+  //       }
+  //       resultMatrix[i * columns2 + j] = sum;
+  //     }
+  //   }
+
+  //   return resultMatrix;
+  // }
+
+  // List<double> matrixSum(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
+  //   if (rows1 != rows2 || columns1 != columns2) return [];
+  //   List<double> resultMatrix = List.filled(rows1 * columns1, 0.0);
+
+  //   for (int i = 0; i < rows1; i++) {
+  //     for (int j = 0; j < columns1; j++) {
+  //       resultMatrix[i * columns1 + j] = matrix1[i * columns1 + j] + matrix2[i * columns1 + j];
+  //     }
+  //   }
+
+  //   return resultMatrix;
+  // }
+
+  // Modify matrixMultiply function
+List<double> matrixMultiply(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
     if (columns1 != rows2) return [];
+
     List<double> resultMatrix = List.filled(rows1 * columns2, 0.0);
 
     for (int i = 0; i < rows1; i++) {
-      for (int j = 0; j < columns2; j++) {
-        double sum = 0.0;
-        for (int k = 0; k < columns1; k++) {
-          sum += matrix1[i * columns1 + k] * matrix2[k * columns2 + j];
+        for (int j = 0; j < columns2; j++) {
+            double sum = 0.0;
+            for (int k = 0; k < columns1; k++) {
+                sum += matrix1[i * columns1 + k] * matrix2[k * columns2 + j];
+            }
+            resultMatrix[i * columns2 + j] = sum;
         }
-        resultMatrix[i * columns2 + j] = sum;
-      }
     }
 
     return resultMatrix;
-  }
+}
 
-  List<double> matrixSum(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
+// Modify matrixSum function
+List<double> matrixSum(List<double> matrix1, int rows1, int columns1, List<double> matrix2, int rows2, int columns2) {
     if (rows1 != rows2 || columns1 != columns2) return [];
+
     List<double> resultMatrix = List.filled(rows1 * columns1, 0.0);
 
     for (int i = 0; i < rows1; i++) {
-      for (int j = 0; j < columns1; j++) {
-        resultMatrix[i * columns1 + j] = matrix1[i * columns1 + j] + matrix2[i * columns1 + j];
-      }
+        for (int j = 0; j < columns1; j++) {
+            resultMatrix[i * columns1 + j] = matrix1[i * columns1 + j] + matrix2[i * columns1 + j];
+        }
     }
 
     return resultMatrix;
-  }
+}
+
+
 
   void displayAll() {
     // Display the transition matrix
@@ -80,6 +116,7 @@ class Markov {
 }
 
 class AbsorbingMarkov extends Markov {
+
   late int pNodes;
   late int qNodes;
   late List<double> matrixP;
@@ -237,12 +274,31 @@ class AbsorbingMarkov extends Markov {
     }
 
     // Calculate the geometric sum
+    // for (int i = 0; i < power; i++) {
+    //   if (i % 2 == 0) {
+    //     geometricSum = matrixSum(geometricSum, pNodes, pNodes, matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy2, pNodes, pNodes), pNodes, pNodes);
+    //   } else {
+    //     geometricSum = matrixSum(geometricSum, pNodes, pNodes, matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy1, pNodes, pNodes), pNodes, pNodes);
+    //   }
+    // }
+
+    // Calculate the geometric sum
     for (int i = 0; i < power; i++) {
       if (i % 2 == 0) {
-        geometricSum = matrixSum(geometricSum, pNodes, pNodes, matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy2, pNodes, pNodes), pNodes, pNodes);
+        matrixPCopy1 = matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy2, pNodes, pNodes);
       } else {
-        geometricSum = matrixSum(geometricSum, pNodes, pNodes, matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy1, pNodes, pNodes), pNodes, pNodes);
+        matrixPCopy2 = matrixMultiply(matrixP, pNodes, pNodes, matrixPCopy1, pNodes, pNodes);
       }
+
+      // Update geometricSum based on the current matrix copy
+      geometricSum = matrixSum(
+        geometricSum,
+        pNodes,
+        pNodes,
+        (i % 2 == 0) ? List.from(matrixPCopy1) : List.from(matrixPCopy2),
+        pNodes,
+        pNodes,
+      );
     }
 
     return geometricSum;
@@ -251,21 +307,45 @@ class AbsorbingMarkov extends Markov {
   List<double> calculateState(List<double> initialState, int timeSteps) {
     // Raise the P matrix to the power of timeSteps
     List<double> matrixPPower = raisePToPower(timeSteps);
+    print("Matrix P Power:");
+    for (int i = 0; i < pNodes; i++) {
+      for (int j = 0; j < pNodes; j++) {
+        print("${matrixPPower[i * pNodes + j]}  ");
+      }
+      print('\n');
+    }
+
     List<double> matrixPGeometricSum = geometricSumP(timeSteps - 1);
+    print("Matrix P Geometric Sum:");
+    for (int i = 0; i < pNodes; i++) {
+      for (int j = 0; j < pNodes; j++) {
+        print("${matrixPGeometricSum[i * pNodes + j]}  ");
+      }
+      print('\n');
+    }
 
     List<double> newQ = List.filled(pNodes * qNodes, 0.0);
     newQ = matrixMultiply(matrixPGeometricSum, pNodes, pNodes, matrixQ, pNodes, qNodes);
+    print("New Q:");
+    for (int i = 0; i < pNodes; i++) {
+      for (int j = 0; j < qNodes; j++) {
+        print("${newQ[i * qNodes + j]}  ");
+      }
+      print('\n');
+    }
 
     List<double> finalTransitionMatrix = List.filled(nNodes * nNodes, 0.0);
 
+
     for (int i = 0; i < pNodes; i++) {
-      for (int j = 0; j < pNodes; j++) {
-        finalTransitionMatrix[i * nNodes + j] = matrixPPower[i * pNodes + j];
-      }
-      for (int j = 0; j < qNodes; j++) {
-        finalTransitionMatrix[i * nNodes + j + pNodes] = newQ[i * qNodes + j];
-      }
-    }
+  for (int j = 0; j < pNodes; j++) {
+    finalTransitionMatrix[indexTo[i] * nNodes + indexTo[j]] = matrixPPower[i * pNodes + j];
+  }
+  for (int j = 0; j < qNodes; j++) {
+    finalTransitionMatrix[indexTo[i] * nNodes + indexTo[j + pNodes]] = newQ[i * qNodes + j];
+  }
+}
+
 
     for (int i = pNodes; i < nNodes; i++) {
       for (int j = 0; j < nNodes; j++) {
@@ -273,10 +353,20 @@ class AbsorbingMarkov extends Markov {
       }
     }
 
+    print("Final Transition Matrix:");
+    for (int i = 0; i < nNodes; i++) {
+      for (int j = 0; j < nNodes; j++) {
+        print("${finalTransitionMatrix[i * nNodes + j]}  ");
+      }
+      print('\n');
+    }
     // Calculate the state
     List<double> resultState = List.filled(nNodes, 0.0);
     List<double> indexedState = List.from(initialState);
+
     resultState = matrixMultiply(indexedState, 1, nNodes, finalTransitionMatrix, nNodes, nNodes);
+
+    // Convert the state to the original indexing
     for (int i = 0; i < nNodes; i++) {
       indexedState[i] = resultState[indexFrom[i]];
     }
