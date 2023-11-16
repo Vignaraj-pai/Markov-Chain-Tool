@@ -1,7 +1,10 @@
 import 'dart:collection';
+import 'dart:developer';
 import 'dart:math';
 import 'dart:ui';
 import 'dart:core';
+import 'dart:ffi'
+import 'package:ffi/ffi.dart'
 
 import 'package:arrow_path/arrow_path.dart';
 import 'package:bfs_visualiser/Graph_Node_widget.dart';
@@ -10,8 +13,31 @@ import 'package:bfs_visualiser/graph_node_class.dart';
 import 'package:flutter/material.dart';
 
 void main() {
+  // FFIBridge.initialize();
   runApp(const MyApp());
 }
+
+// Works for Linux and Android
+// class FFIBridge {
+//   static bool initialize() {
+//     nativeApiLib = (DynamicLibrary.open('../markov-lib/markov.so'));
+
+//     final _create_markov_chain = nativeApiLib.lookup<NativeFunction<Pointer<Void> Function(Int32)>>('create_markov_chain');
+//     create_markov_chain = _create_markov_chain.asFunction<Pointer<Void> Function(int)>();
+
+//     set_transition_matrix = nativeApiLib.lookupFunction<Void Function(Pointer<Void>, Pointer<Void>),
+//                                                                     void Function(Pointer<Void>, Pointer<Void>)>('set_transition_matrix');
+
+//     calculate_state = nativeApiLib.lookupFunction<Pointer<Float> Function(Pointer<Void>, Pointer<Void>, Int32),
+//                                                                     Pointer<Float> Function(Pointer<Void>, Pointer<Void>, int)>('set_transition_matrix');
+//     return true;
+//   }
+
+//   static late DynamicLibrary nativeApiLib;
+//   static late Function create_markov_chain;
+//   static late Function set_transition_matrix;
+//   static late Function calculate_state;
+// }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
